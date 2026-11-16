@@ -101,6 +101,7 @@ details{font-size:13px;line-height:1.6}
     · 피 10장 1점(+1씩), 쌍피는 2장으로 계산<br>
     · 쪽, 따닥, 뻑 먹기, 싹쓸이 하면 상대 피 1장 가져옴. 뻑이면 3장이 바닥에 남아요.<br>
     · 박: 피박(상대 피 1~5장), 광박(상대 광 0장), 멍박(내 열끗 7장 이상), 고박(고 부르고 진 사람) 각각 x2<br>
+    · 흔들기: 내 차례에 같은 월 패 3장을 공개하면 승리 시 해당 월마다 x2. 한 월은 판당 한 번만 가능해요.<br>
     · 아무도 못 나면 나가리, 다음 판 점수 x2</div>
   </details>
 </div>
@@ -111,6 +112,7 @@ details{font-size:13px;line-height:1.6}
   <div id="table"></div>
   <div class="player" id="meBox"></div>
   <div id="status"></div>
+  <div id="shakeBar" class="row" style="justify-content:center;flex-wrap:wrap"></div>
   <div id="hand"></div>
 </div>
 <div id="modal"><div class="box" id="mbox"></div></div>
@@ -155,11 +157,18 @@ function deal(st){
   let deck,hands,floor;
   do{deck=shuffle([...Array(48).keys()]);hands=[deck.splice(0,10),deck.splice(0,10)];floor=deck.splice(0,8);}
   while(hasFour(floor)||hasFour(hands[0])||hasFour(hands[1]));
-  Object.assign(st,{deck,hands:hands.map(h=>h.sort((a,b)=>a-b)),floor,caps:[[],[]],turn:st.dealer,phase:'play',goCount:[0,0],lastGo:[0,0],pending:null,result:null,last:null});
+  Object.assign(st,{deck,hands:hands.map(h=>h.sort((a,b)=>a-b)),floor,caps:[[],[]],turn:st.dealer,phase:'play',goCount:[0,0],lastGo:[0,0],shakes:[[],[]],pending:null,result:null,last:null});
   st.round++;
 }
 function toast(st,text,p){st.seq++;st.toast={seq:st.seq,text,p}}
 function stealPi(st,from,to){const c=st.caps[from];let i=c.findIndex(x=>ck(x)==='pi');if(i<0)i=c.findIndex(x=>ck(x)==='ssang');if(i<0)return null;const x=c.splice(i,1)[0];st.caps[to].push(x);return x}
+
+function shake(st,p,m){
+  if(st.phase!=='play'||st.turn!==p||!Number.isInteger(m)||m<1||m>12)return false;
+  st.shakes=st.shakes||[[],[]];
+  if(st.shakes[p].includes(m)||st.hands[p].filter(c=>cm(c)===m).length!==3)return false;
+  st.shakes[p].push(m);toast(st,`${m}월 흔들기!`,p);return true;
+}
 
 function playCard(st,p,c,choice){
   const h=st.hands[p];if(!h.includes(c))return false;rm(h,c);
@@ -224,6 +233,7 @@ function endRound(st,w){
   if(sw.yeolN>=7)mults.push(['멍박',2]);
   if(st.goCount[l]>0)mults.push(['고박',2]);
   if(st.nagari>1)mults.push(['나가리 보너스',st.nagari]);
+  const shakeN=(st.shakes?.[w]||[]).length;if(shakeN)mults.push([`흔들기 ${shakeN}회`,2**shakeN]);
   const total=mults.reduce((t,m)=>t*m[1],base);
   st.totals[w]+=total;st.totals[l]-=total;
   st.result={w,items:sw.items,g,base,mults,total};
@@ -264,7 +274,7 @@ if(qs){$('joinCode').value=qs.toUpperCase();$('joinMsg').textContent='초대 링
 function genCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<4;i++)s+=A[rnd(A.length)];return s}
 function pid(code){return 'wooriziphwatu-gostop-'+code}
 function viewFor(i){
-  return {me:i,code:roomCode,mode,phase:st.phase,turn:st.turn,floor:st.floor,hand:st.hands[i],oppN:st.hands[1-i].length,deckN:st.deck.length,caps:st.caps,names:st.names,goCount:st.goCount,totals:st.totals,
+  return {me:i,code:roomCode,mode,phase:st.phase,turn:st.turn,floor:st.floor,hand:st.hands[i],oppN:st.hands[1-i].length,deckN:st.deck.length,caps:st.caps,names:st.names,goCount:st.goCount,shakes:st.shakes||[[],[]],totals:st.totals,
     pending:st.pending?{p:st.pending.p,F:st.pending.F,opts:st.pending.opts}:null,result:st.result,toast:st.toast,last:st.last,round:st.round,nagari:st.nagari};
 }
 function sync(){
@@ -280,13 +290,14 @@ function scheduleBot(){
 }
 function applyAct(p,a){
   if(!st||!a)return;let ok=false;
-  if(a.type==='play'&&st.phase==='play'&&st.turn===p)ok=playCard(st,p,a.c,a.f);
+  if(a.type==='shake')ok=shake(st,p,a.m);
+  else if(a.type==='play'&&st.phase==='play'&&st.turn===p)ok=playCard(st,p,a.c,a.f);
   else if(a.type==='flip'&&st.phase==='chooseFlip')ok=chooseFlip(st,p,a.c);
   else if((a.type==='go'||a.type==='stop')&&st.phase==='goStop'&&st.turn===p){goStop(st,p,a.type==='go');ok=true}
   else if(a.type==='next'&&st.phase==='end'){deal(st);ok=true}
   if(ok)sync();
 }
-function act(a){selected=null;if(mode==='guest'){if(conn&&conn.open)conn.send({t:'act',a});else setConn(false)}else applyAct(0,a)}
+function act(a){selected=null;if(mode==='guest'){if(conn&&conn.open)conn.send({t:'act',a});else setConn(false)}else if(mode==='host'&&(!conn||!conn.open)){setConn(false);showToast('상대와 다시 연결해줘')}else applyAct(0,a)}
 
 function startBot(){mode='bot';roomCode=null;st=newGame([myName(),'컴퓨터']);deal(st);showGame();sync()}
 function startHost(resume){
@@ -332,7 +343,7 @@ function setConn(on){
   if(mode==='bot'){$('conn').innerHTML='';return}
   $('conn').innerHTML=on?'<span class="dot on"></span>연결됨':(mode==='guest'?'<span class="dot off"></span>끊김 <button class="btn2" style="padding:2px 8px;font-size:12px" onclick="connectGuest()">다시 연결</button>':'<span class="dot off"></span>상대 연결 끊김 (다시 들어오면 이어서)');
 }
-function copyLink(){const u=location.href.split('?')[0]+'?room='+roomCode;navigator.clipboard?.writeText(u);$('hostMsg').textContent='링크 복사됨! 카톡으로 보내줘'}
+async function copyLink(){const u=location.href.split('?')[0].split('#')[0]+'?room='+roomCode;try{if(!navigator.clipboard)throw Error('unavailable');await navigator.clipboard.writeText(u);$('hostMsg').textContent='링크 복사됨! 카톡으로 보내줘'}catch(e){$('hostMsg').textContent='복사할 수 없어요. 주소를 직접 복사해줘: '+u}}
 function showGame(){$('lobby').style.display='none';$('game').style.display='block'}
 
 // ===== 화면 =====
@@ -350,7 +361,7 @@ function capsHTML(caps){
 function playerHTML(v,i,isMe){
   const sc=score(v.caps[i]);const isTurn=v.turn===i&&v.phase!=='end';
   const backs=isMe?'':`<div class="backs">${Array(v.oppN).fill(0).map(()=>cardHTML(null)).join('')}</div>`;
-  return `<div class="phead"><span>${isMe?'나':''} <b>${esc(v.names[i])}</b>${isTurn?'<span class="turnmark">차례</span>':''}${v.goCount[i]?` <span class="turnmark" style="background:#d9443b;color:#fff">${v.goCount[i]}고</span>`:''}</span>${backs}<span class="sc">${sc.total}점</span></div>
+  return `<div class="phead"><span>${isMe?'나':''} <b>${esc(v.names[i])}</b>${isTurn?'<span class="turnmark">차례</span>':''}${v.goCount[i]?` <span class="turnmark" style="background:#d9443b;color:#fff">${v.goCount[i]}고</span>`:''}${v.shakes?.[i]?.length?` <span class="turnmark">흔들기 ${v.shakes[i].map(m=>m+'월').join(', ')}</span>`:''}</span>${backs}<span class="sc">${sc.total}점</span></div>
   <div class="caps">${capsHTML(v.caps[i])}</div><div class="items">${sc.items.map(x=>x[0]+' '+x[1]).join(' · ')}</div>`;
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
@@ -381,6 +392,8 @@ function render(v){
   else s='판 끝!';
   if(v.last&&v.phase!=='end'){s+=` <span class="muted">(${esc(v.names[v.last.p])}: ${MN[cm(v.last.played)]} 냄${v.last.flipped!==null?', '+MN[cm(v.last.flipped)]+' 뒤집음':''})</span>`}
   $('status').innerHTML=s;
+  const available=myTurn?[...new Set(v.hand.map(cm))].filter(m=>v.hand.filter(c=>cm(c)===m).length===3&&!(v.shakes?.[me]||[]).includes(m)):[];
+  $('shakeBar').innerHTML=available.map(m=>`<button class="btn2" onclick="act({type:'shake',m:${m}})">${m}월 흔들기 (승리 시 ×2)</button>`).join('');
   renderModal(v);
   if(v.toast&&v.toast.seq>lastToast){lastToast=v.toast.seq;showToast(`${esc(v.names[v.toast.p])}: ${esc(v.toast.text)}`)}
 }
