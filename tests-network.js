@@ -4,7 +4,7 @@ function runNetworkTests(engineSource,networkSource){
  function test(name,fn){try{fn();results.push({name,ok:true})}catch(e){results.push({name,ok:false,error:e.message})}}
  function lab(){
  let now=0,seq=0,peerSeq=0;const tasks=new Map(),registry=new Map(),wires=[];let drop=()=>false;
- const clone=v=>JSON.parse(JSON.stringify(v));
+ const clone=v=>JSON.parse(JSON.stringify(v,(_,x)=>x===undefined?null:x));
  function later(fn,ms=0,interval=0){const id=++seq;tasks.set(id,{fn,at:now+ms,interval});return id}
  function tick(ms=0){const target=now+ms;let n=0;while(true){const q=[...tasks].filter(([,t])=>t.at<=target).sort((a,b)=>a[1].at-b[1].at||a[0]-b[0])[0];if(!q)break;if(++n>20000)throw Error('timer loop');now=q[1].at;tasks.delete(q[0]);if(q[1].interval)tasks.set(q[0],{...q[1],at:now+q[1].interval});q[1].fn();}now=target;}
  class E{constructor(){this.events={}}on(t,f){(this.events[t]||=[]).push(f);return this}emit(t,d){for(const f of this.events[t]||[])f(d)}}

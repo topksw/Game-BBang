@@ -81,7 +81,7 @@ function validView(v){try{
  if(!Number.isInteger(v.deckN)||v.deckN<0||v.deckN>20||!Number.isInteger(v.oppN)||v.oppN<0||v.oppN>10||!nn(v.nagari)||v.nagari<1||!Number.isInteger(Math.log2(v.nagari)))return false;
  if(!Array.isArray(v.log)||v.log.length>100||!v.log.every(e=>e&&[null,0,1].includes(e.p)&&typeof e.text==='string'&&e.text.length<=500))return false;
  if(v.last!==null&&(!v.last||!actor(v.last.p)||!card(v.last.played)||(v.last.flipped!==null&&!card(v.last.flipped))))return false;
- if(v.toast!==undefined&&(!v.toast||!nn(v.toast.seq)||!actor(v.toast.p)||typeof v.toast.text!=='string'||v.toast.text.length>500))return false;
+ if(v.toast!=null&&(!v.toast||!nn(v.toast.seq)||!actor(v.toast.p)||typeof v.toast.text!=='string'||v.toast.text.length>500))return false;
  if(v.phase==='chooseFlip'){const p=v.pending;if(!p||p.p!==v.turn||!card(p.F)||!cards(p.opts)||p.opts.length!==2||new Set(p.opts).size!==2||!p.opts.every(c=>v.floor.includes(c)&&cm(c)===cm(p.F)))return false;}else if(v.pending!==null)return false;
  if(v.phase==='end'){const r=v.result;if(!r)return false;if(r.nagari){if(r.mult!==v.nagari)return false;}else if(!actor(r.w)||!nn(r.g)||!nn(r.base)||!nn(r.total)||!Array.isArray(r.items)||!Array.isArray(r.mults)||![...r.items,...r.mults].every(a=>Array.isArray(a)&&a.length===2&&typeof a[0]==='string'&&a[0].length<=100&&nn(a[1])))return false;}else if(v.result!==null)return false;
  const known=[...v.hand,...v.floor,...v.caps.flat()];return new Set(known).size===known.length;
