@@ -76,7 +76,7 @@ function renderModal(v){
     if(r.nagari)h=`<h2>나가리</h2><div>아무도 못 났어요. 다음 판은 점수 x${v.nagari}!</div>`;
     else{
       const win=r.w===me;
-      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><table>${r.items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${m[0]}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
+      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><table>${r.items.map(x=>`<tr><td>${esc(x[0])}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${esc(m[0])}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
     }
     const ready=v.ready||[false,false];
     h+=`<div class="muted">총점 ${esc(v.names[me])} ${v.totals[me]} : ${v.totals[op]} ${esc(v.names[op])}</div><div style="margin-top:10px">${esc(v.names[me])}: ${ready[me]?'준비 완료':'준비 전'} · ${esc(v.names[op])}: ${v.mode==='bot'?'자동 준비':(ready[op]?'준비 완료':'준비 전')}</div><div class="opts"><button class="btn" ${ready[me]||blocked?'disabled style="opacity:.6;cursor:default"':''} onclick="act({type:'next'})">${ready[me]?'상대 기다리는 중':'다음 판 준비'}</button></div>`;

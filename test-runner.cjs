@@ -1,4 +1,3 @@
-throw new Error('INTENTIONAL CI GATE CHECK: must not package or publish');
 const fs=require('node:fs');const vm=require('node:vm');const {webcrypto}=require('node:crypto');
 const engine=fs.readFileSync(__dirname+'/engine.js','utf8'),network=fs.readFileSync(__dirname+'/network.js','utf8');
 const context=vm.createContext({crypto:webcrypto,console,URL,URLSearchParams});

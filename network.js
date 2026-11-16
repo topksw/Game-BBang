@@ -25,7 +25,8 @@ function readSaved(){
  }return null;
 }
 function saveHost(){if(mode!=='host'||!st)return true;if(!validState(st)){notice('현재 상태를 저장하지 못했어요. 오류 진단을 복사해줘.','invalid-save');return false}const old=stored(SAVE_KEY);if(normalizeSave(old))persist(SAVE_KEY+'-backup',old);return persist(SAVE_KEY,{format:SAVE_FORMAT,version:VERSION,protocol:PROTOCOL,rules:RULESET,code:roomCode,roomId,secret:roomSecret,seat:seatToken,st});}
-function refreshResume(){const x=readSaved();$('resumeBox').style.display=x?'block':'none';if(x)$('resumeCode').textContent=x.code;else if(stored(SAVE_KEY)||localStorage.getItem(SAVE_KEY))notice('저장을 읽지 못했어요. 원본은 보관해요. 새 방을 만들거나 오류 진단을 복사해줘.','save-invalid');}
+function hasStored(key){try{return localStorage.getItem(key)!==null}catch(e){notice('저장 공간 접근이 차단됐어요. 이어하기는 보장되지 않지만 연습은 할 수 있어요.','storage');return false}}
+function refreshResume(){const x=readSaved();$('resumeBox').style.display=x?'block':'none';if(x)$('resumeCode').textContent=x.code;else if(stored(SAVE_KEY)||hasStored(SAVE_KEY))notice('저장을 읽지 못했어요. 원본은 보관해요. 새 방을 만들거나 오류 진단을 복사해줘.','save-invalid');}
 $('myname').value=stored(STORE_PREFIX+'name','');$('myname').addEventListener('change',()=>persist(STORE_PREFIX+'name',myName()));
 $('versionLabel').textContent=VERSION+(APP_SCOPE==='preview'?' · 테스트용':'');refreshResume();
 const inviteRoom=new URLSearchParams(location.search).get('room'), inviteHash=new URLSearchParams(location.hash.slice(1));
@@ -73,8 +74,19 @@ function startGuest(){const code=$('joinCode').value.trim().toUpperCase(),secret
 }
 function connectionFailed(text,kind){clearTimeout(connectTimer);const c=conn;conn=null;pendingSend=false;pendingRequest=null;if(c)c.close();setConn(false);notice(text,kind);scheduleRetry();}
 function scheduleRetry(){if(mode!=='guest'||retryTimer)return;if(retries>=5){notice('자동 재접속 5회가 끝났어요. 다시 연결하거나 최신 초대 링크로 열어줘.','retry-exhausted');return}const ep=epoch;retryTimer=setTimeout(()=>{retryTimer=null;if(epoch!==ep)return;retries++;if(peer?.open)connectGuest();else if(peer&&!peer.destroyed){try{peer.reconnect()}catch(e){}scheduleRetry();}else notice('다시 연결을 눌러 연결을 새로 시작해줘.','peer-closed');},Math.min(2000*2**retries,15000));}
-function validView(v){try{const cards=a=>Array.isArray(a)&&a.every(c=>Number.isInteger(c)&&c>=0&&c<48),two=a=>Array.isArray(a)&&a.length===2;
- return v&&v.version===VERSION&&v.protocol===PROTOCOL&&v.rules===RULESET&&v.roomId===roomId&&v.code===guestCode&&v.me===1&&Number.isSafeInteger(v.revision)&&v.revision>=0&&Number.isInteger(v.round)&&v.round>0&&['play','chooseFlip','goStop','end'].includes(v.phase)&&[0,1].includes(v.turn)&&cards(v.hand)&&cards(v.floor)&&two(v.caps)&&v.caps.every(cards)&&two(v.names)&&v.names.every(n=>typeof n==='string'&&n.length<=8)&&two(v.totals)&&v.totals.every(Number.isSafeInteger)&&two(v.goCount)&&v.goCount.every(Number.isSafeInteger)&&two(v.shakes)&&v.shakes.every(a=>Array.isArray(a)&&a.every(m=>Number.isInteger(m)&&m>0&&m<13))&&two(v.ready)&&v.ready.every(b=>typeof b==='boolean')&&Number.isInteger(v.deckN)&&v.deckN>=0&&v.deckN<=20&&Number.isInteger(v.oppN)&&v.oppN>=0&&v.oppN<=10&&Array.isArray(v.log)&&v.log.every(e=>e&&[null,0,1].includes(e.p)&&typeof e.text==='string')&&(v.phase!=='chooseFlip'||v.pending&&[0,1].includes(v.pending.p)&&cards(v.pending.opts)&&v.pending.opts.length===2)&&(v.phase!=='end'||v.result&&(v.result.nagari||Array.isArray(v.result.items)&&Array.isArray(v.result.mults)));}catch(e){return false}}
+function validView(v){try{
+ const card=c=>Number.isInteger(c)&&c>=0&&c<48,cards=a=>Array.isArray(a)&&a.every(card),two=a=>Array.isArray(a)&&a.length===2,nn=n=>Number.isSafeInteger(n)&&n>=0,actor=p=>p===0||p===1;
+ if(!v||v.version!==VERSION||v.protocol!==PROTOCOL||v.rules!==RULESET||v.roomId!==roomId||v.code!==guestCode||v.me!==1||!nn(v.revision)||!Number.isSafeInteger(v.round)||v.round<1||!['play','chooseFlip','goStop','end'].includes(v.phase)||!actor(v.turn))return false;
+ if(!cards(v.hand)||v.hand.length>10||!cards(v.floor)||!two(v.caps)||!v.caps.every(cards)||!two(v.names)||!v.names.every(n=>typeof n==='string'&&n.length<=8)||!two(v.totals)||!v.totals.every(Number.isSafeInteger)||v.totals[0]+v.totals[1]!==0)return false;
+ if(!two(v.goCount)||!v.goCount.every(n=>nn(n)&&n<=10)||!two(v.shakes)||!v.shakes.every(a=>Array.isArray(a)&&new Set(a).size===a.length&&a.every(m=>Number.isInteger(m)&&m>0&&m<13))||!two(v.ready)||!v.ready.every(b=>typeof b==='boolean'))return false;
+ if(!Number.isInteger(v.deckN)||v.deckN<0||v.deckN>20||!Number.isInteger(v.oppN)||v.oppN<0||v.oppN>10||!nn(v.nagari)||v.nagari<1||!Number.isInteger(Math.log2(v.nagari)))return false;
+ if(!Array.isArray(v.log)||v.log.length>100||!v.log.every(e=>e&&[null,0,1].includes(e.p)&&typeof e.text==='string'&&e.text.length<=500))return false;
+ if(v.last!==null&&(!v.last||!actor(v.last.p)||!card(v.last.played)||(v.last.flipped!==null&&!card(v.last.flipped))))return false;
+ if(v.toast!==undefined&&(!v.toast||!nn(v.toast.seq)||!actor(v.toast.p)||typeof v.toast.text!=='string'||v.toast.text.length>500))return false;
+ if(v.phase==='chooseFlip'){const p=v.pending;if(!p||p.p!==v.turn||!card(p.F)||!cards(p.opts)||p.opts.length!==2||new Set(p.opts).size!==2||!p.opts.every(c=>v.floor.includes(c)&&cm(c)===cm(p.F)))return false;}else if(v.pending!==null)return false;
+ if(v.phase==='end'){const r=v.result;if(!r)return false;if(r.nagari){if(r.mult!==v.nagari)return false;}else if(!actor(r.w)||!nn(r.g)||!nn(r.base)||!nn(r.total)||!Array.isArray(r.items)||!Array.isArray(r.mults)||![...r.items,...r.mults].every(a=>Array.isArray(a)&&a.length===2&&typeof a[0]==='string'&&a[0].length<=100&&nn(a[1])))return false;}else if(v.result!==null)return false;
+ const known=[...v.hand,...v.floor,...v.caps.flat()];return new Set(known).size===known.length;
+ }catch(e){return false}}
 function connectGuest(){if(mode!=='guest'||!peer?.open)return;clearTimeout(connectTimer);const ep=epoch,old=conn;conn=null;if(old)old.close();pendingSend=false;pendingRequest=null;const c=peer.connect(pid(guestCode),{reliable:true});conn=c;
  connectTimer=setTimeout(()=>{if(epoch===ep&&conn===c)connectionFailed('상대 응답을 기다리다 시간이 지났어요. 다시 시도해요.','handshake-timeout');},12000);
  c.on('open',()=>{if(epoch!==ep||conn!==c)return;c.send({t:'hello',version:VERSION,protocol:PROTOCOL,rules:RULESET,roomId,secret:roomSecret,seat:guestSeat,name:myName()});});

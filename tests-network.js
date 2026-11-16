@@ -42,5 +42,8 @@ function runNetworkTests(engineSource,networkSource){
  test('참가자 전송에 전체 덱·상대 손패·비밀값 없음',()=>{const l=lab(),{h}=l.pair();const v=h.viewFor(1);yes(!('hands' in v)&&!('deck' in v)&&!('roomSecret' in v)&&!('seatToken' in v));});
  test('테스트 주소는 저장·Peer 접속을 실사용과 분리',()=>{const l=lab(),h=l.client('https://example.test/preview/');h.startHost();l.tick();yes(h.peerId().includes('-preview-'));eq(h.get().mode,'host');const g=l.client(h.inviteURL());g.startGuest();l.tick();yes(g.get().connected);yes(h.store.getItem('bbang-preview-save-v1'));eq(h.store.getItem('bbang-save-v1'),null);});
  test('잘못된 공개 상태는 수신 거절',()=>{const l=lab(),{g}=l.pair(),v=g.get().view;yes(g.validView(v));yes(!g.validView({...v,caps:null}));yes(!g.validView({...v,roomId:'wrong'}));});
+ test('저장 접근 차단 환경에서도 시작·연습 가능',()=>{const l=lab(),bad={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')},removeItem(){}};const c=l.client(undefined,bad);c.startBot();yes(c.get().st);eq(c.get().mode,'bot');});
+ test('결과 수치에 HTML 문자열이 있으면 상태 거절',()=>{const l=lab(),{h,g}=l.pair(),v=h.viewFor(1);yes(!g.validView({...v,phase:'end',result:{w:0,g:0,base:7,total:'<img>',items:[],mults:[]}}));});
+ test('잘못된 마지막 패·알림 객체 거절',()=>{const l=lab(),{g}=l.pair(),v=g.get().view;yes(!g.validView({...v,last:{p:9,played:0,flipped:null}}));yes(!g.validView({...v,toast:{seq:1,p:0,text:{}}}));});
  return {total:results.length,passed:results.filter(x=>x.ok).length,results};
 }
