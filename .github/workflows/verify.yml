@@ -1,14 +1,71 @@
-name: Verify rules
-on: [push, pull_request, workflow_dispatch]
+name: Verify and publish Game BBang
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+    inputs:
+      rollback_to:
+        description: 'Optional verified production commit SHA; blank publishes main'
+        required: false
+        default: ''
+        type: string
 permissions:
   contents: read
+concurrency:
+  group: game-bbang-pages
+  cancel-in-progress: false
 jobs:
-  rules:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Run rule and conservation tests
+      - name: Rule, save and recovery tests
         run: node test-runner.cjs
+  package:
+    if: github.event_name != 'pull_request'
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.rollback_to || 'main' }}
+          path: production
+      - uses: actions/checkout@v4
+        with:
+          ref: staging
+          path: candidate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify both published sources
+        run: |
+          node production/test-runner.cjs
+          node candidate/test-runner.cjs
+      - name: Build production and isolated preview
+        run: node candidate/build-site.cjs production candidate _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy verified files
+        id: deployment
+        uses: actions/deploy-pages@v4
