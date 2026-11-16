@@ -3,7 +3,7 @@ const VERSION='1.0.0-beta.2', PROTOCOL=2, SAVE_FORMAT=2, RULESET='bbang-basic-1'
 const APP_SCOPE=location.pathname.includes('/preview/')?'preview':'live';
 const STORE_PREFIX=APP_SCOPE==='preview'?'bbang-preview-':'bbang-', SAVE_KEY=STORE_PREFIX+'save-v1';
 let mode=null,st=null,view=null,peer=null,conn=null,roomCode=null,roomId='',selected=null,lastToast=0,botTimer=null;
-let roomSecret='',seatToken='',guestSeat='',guestCode=null,connected=false,epoch=0,retryTimer=null,connectTimer=null,lastSeen=0,requestSeq=0,pendingSend=false,pendingRequest=null,retries=0,lastNotice='',lastError='';
+let roomSecret='',seatToken='',guestSeat='',guestCode=null,connected=false,epoch=0,retryTimer=null,connectTimer=null,lastSeen=0,requestSeq=0,pendingSend=false,pendingRequest=null,retries=0,lastNotice='',lastError='',sessionReplaced=false;
 const $=id=>document.getElementById(id);
 const myName=()=>($('myname').value.trim().slice(0,8)||'나');
 const token=()=>Array.from(crypto.getRandomValues(new Uint8Array(16)),n=>n.toString(16).padStart(2,'0')).join('');
@@ -34,7 +34,7 @@ if(inviteRoom){$('joinCode').value=inviteRoom.toUpperCase();const key=inviteHash
 function genCode(){const A='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';return Array.from({length:6},()=>A[rnd(A.length)]).join('')}
 function pid(c){return 'game-bbang-v2-'+APP_SCOPE+'-'+c}
 function cleanup(){epoch++;clearTimeout(botTimer);clearTimeout(retryTimer);clearTimeout(connectTimer);retryTimer=null;connectTimer=null;const c=conn,p=peer;conn=null;peer=null;connected=false;pendingSend=false;pendingRequest=null;if(c)c.close();if(p)p.destroy();}
-function beginSession(nextMode){cleanup();mode=nextMode;st=null;view=null;selected=null;lastToast=0;retries=0;requestSeq=0;lastError='';notice('');setConn(false);}
+function beginSession(nextMode){cleanup();mode=nextMode;st=null;view=null;selected=null;lastToast=0;retries=0;requestSeq=0;lastError='';sessionReplaced=false;notice('');setConn(false);}
 function showGame(){$('lobby').style.display='none';$('game').style.display='block'}
 function setConn(on){connected=on;if(on){lastSeen=Date.now();retries=0;clearTimeout(retryTimer);retryTimer=null;notice('');}if($('conn'))$('conn').textContent=mode==='bot'?'연습 모드':on?'연결됨':'연결 끊김 · 복구 필요';if($('connectionHelp'))$('connectionHelp').hidden=on||mode==='bot';if(view)render(view);}
 function viewFor(i){return {version:VERSION,protocol:PROTOCOL,rules:RULESET,roomId,revision:st.revision,me:i,code:roomCode,mode,phase:st.phase,turn:st.turn,floor:st.floor,hand:st.hands[i],oppN:st.hands[1-i].length,deckN:st.deck.length,caps:st.caps,names:st.names,goCount:st.goCount,shakes:st.shakes,totals:st.totals,pending:st.pending?{p:st.pending.p,F:st.pending.F,opts:st.pending.opts}:null,result:st.result,ready:st.ready,toast:st.toast,last:st.last,log:st.log,round:st.round,nagari:st.nagari}}
@@ -57,10 +57,9 @@ function startHost(resume=false,attempt=0){
  c.on('data',d=>{if(epoch!==ep||!d||typeof d!=='object')return;
  if(d.t==='hello'){
  if(d.version!==VERSION||d.protocol!==PROTOCOL||d.rules!==RULESET){deny('버전이 달라요. 두 사람 모두 게임을 나간 뒤 새로고침해줘.');return}
- if(connected&&conn!==c){deny('이미 두 사람이 연결된 방이에요.');return}
  if(d.roomId!==roomId||d.secret!==roomSecret||!isToken(d.seat)){deny('초대 정보가 맞지 않아요. 최신 초대 링크를 받아줘.');return}
  if(seatToken&&seatToken!==d.seat){deny('다른 브라우저에 예약된 자리예요. 처음 참가한 브라우저로 돌아와줘.');return}
- seatToken=d.seat;authorized=true;clearTimeout(timer);if(conn&&conn!==c)conn.close();conn=c;
+ seatToken=d.seat;authorized=true;clearTimeout(timer);const previous=conn;conn=c;if(previous&&previous!==c){if(previous.open)previous.send({t:'replaced'});setTimeout(()=>previous.close(),150);}
  if(!st){st=newGame([myName(),String(d.name||'상대').slice(0,8)]);deal(st);}else st.names[1]=String(d.name||'상대').slice(0,8);
  showGame();setConn(true);sync();return;}
  if(!authorized||conn!==c)return;lastSeen=Date.now();if(d.t==='ping'){c.send({t:'pong'});return}if(d.t==='pong')return;if(d.t==='sync'){sync();return}
@@ -73,7 +72,7 @@ function startGuest(){const code=$('joinCode').value.trim().toUpperCase(),secret
  beginSession('guest');const ep=epoch;guestCode=roomCode=code;roomId=id;roomSecret=secret;guestSeat=seatFor(roomId,code);persist(STORE_PREFIX+'name',myName());peer=createPeer();if(!peer)return;notice('방에 연결 중…');peer.on('open',()=>{if(epoch===ep)connectGuest();});peer.on('disconnected',()=>{if(epoch===ep&&!peer.destroyed){try{peer.reconnect()}catch(e){notice('중개 서버 접속을 다시 시도해줘.','signaling');}}});peer.on('error',()=>{if(epoch===ep)connectionFailed('방을 찾지 못했어요. 방장이 열었는지 확인해줘.','peer-guest');});connectTimer=setTimeout(()=>{if(epoch===ep&&!connected)connectionFailed('연결이 오래 걸려요. 방장 상태와 네트워크를 확인해줘.','peer-timeout');},15000);
 }
 function connectionFailed(text,kind){clearTimeout(connectTimer);const c=conn;conn=null;pendingSend=false;pendingRequest=null;if(c)c.close();setConn(false);notice(text,kind);scheduleRetry();}
-function scheduleRetry(){if(mode!=='guest'||retryTimer)return;if(retries>=5){notice('자동 재접속 5회가 끝났어요. 다시 연결하거나 최신 초대 링크로 열어줘.','retry-exhausted');return}const ep=epoch;retryTimer=setTimeout(()=>{retryTimer=null;if(epoch!==ep)return;retries++;if(peer?.open)connectGuest();else if(peer&&!peer.destroyed){try{peer.reconnect()}catch(e){}scheduleRetry();}else notice('다시 연결을 눌러 연결을 새로 시작해줘.','peer-closed');},Math.min(2000*2**retries,15000));}
+function scheduleRetry(){if(mode!=='guest'||retryTimer||sessionReplaced)return;if(retries>=5){notice('자동 재접속 5회가 끝났어요. 다시 연결하거나 최신 초대 링크로 열어줘.','retry-exhausted');return}const ep=epoch;retryTimer=setTimeout(()=>{retryTimer=null;if(epoch!==ep)return;retries++;if(peer?.open)connectGuest();else if(peer&&!peer.destroyed){try{peer.reconnect()}catch(e){}scheduleRetry();}else notice('다시 연결을 눌러 연결을 새로 시작해줘.','peer-closed');},Math.min(2000*2**retries,15000));}
 function validView(v){try{
  const card=c=>Number.isInteger(c)&&c>=0&&c<48,cards=a=>Array.isArray(a)&&a.every(card),two=a=>Array.isArray(a)&&a.length===2,nn=n=>Number.isSafeInteger(n)&&n>=0,actor=p=>p===0||p===1;
  if(!v||v.version!==VERSION||v.protocol!==PROTOCOL||v.rules!==RULESET||v.roomId!==roomId||v.code!==guestCode||v.me!==1||!nn(v.revision)||!Number.isSafeInteger(v.round)||v.round<1||!['play','chooseFlip','goStop','end'].includes(v.phase)||!actor(v.turn))return false;
@@ -90,15 +89,15 @@ function validView(v){try{
 function connectGuest(){if(mode!=='guest'||!peer?.open)return;clearTimeout(connectTimer);const ep=epoch,old=conn;conn=null;if(old)old.close();pendingSend=false;pendingRequest=null;const c=peer.connect(pid(guestCode),{reliable:true});conn=c;
  connectTimer=setTimeout(()=>{if(epoch===ep&&conn===c)connectionFailed('상대 응답을 기다리다 시간이 지났어요. 다시 시도해요.','handshake-timeout');},12000);
  c.on('open',()=>{if(epoch!==ep||conn!==c)return;c.send({t:'hello',version:VERSION,protocol:PROTOCOL,rules:RULESET,roomId,secret:roomSecret,seat:guestSeat,name:myName()});});
- c.on('data',d=>{if(epoch!==ep||conn!==c||!d)return;lastSeen=Date.now();if(d.t==='reject'){retries=5;clearTimeout(retryTimer);clearTimeout(connectTimer);retryTimer=null;conn=null;c.close();setConn(false);notice(['버전이 달라요. 두 사람 모두 게임을 나간 뒤 새로고침해줘.','이미 두 사람이 연결된 방이에요.','초대 정보가 맞지 않아요. 최신 초대 링크를 받아줘.','다른 브라우저에 예약된 자리예요. 처음 참가한 브라우저로 돌아와줘.'].includes(d.reason)?d.reason:'참가를 거절했어요. 최신 초대 링크를 확인해줘.','rejected');return}
+ c.on('data',d=>{if(epoch!==ep||conn!==c||!d)return;lastSeen=Date.now();if(d.t==='replaced'){sessionReplaced=true;retries=5;clearTimeout(retryTimer);clearTimeout(connectTimer);retryTimer=null;pendingSend=false;pendingRequest=null;conn=null;c.close();setConn(false);notice('같은 자리의 새 연결이 열렸어요. 이 창은 멈춰요. 계속하려면 다시 연결을 눌러줘.','replaced');return}if(d.t==='reject'){retries=5;clearTimeout(retryTimer);clearTimeout(connectTimer);retryTimer=null;conn=null;c.close();setConn(false);notice(['버전이 달라요. 두 사람 모두 게임을 나간 뒤 새로고침해줘.','이미 두 사람이 연결된 방이에요.','초대 정보가 맞지 않아요. 최신 초대 링크를 받아줘.','다른 브라우저에 예약된 자리예요. 처음 참가한 브라우저로 돌아와줘.'].includes(d.reason)?d.reason:'참가를 거절했어요. 최신 초대 링크를 확인해줘.','rejected');return}
  if(d.t==='ping'){c.send({t:'pong'});return}if(d.t==='pong')return;
  if(d.t==='state'){if(!validView(d.v)){connectionFailed('받은 게임 상태를 확인하지 못했어요.','invalid-state');return}if(view&&d.v.revision<view.revision)return;
  if(!pendingRequest||d.ack===pendingRequest.id||d.v.revision>pendingRequest.rev){pendingSend=false;pendingRequest=null;}clearTimeout(connectTimer);view=d.v;selected=null;showGame();setConn(true);render(view);}
  });c.on('close',()=>{if(epoch===ep&&conn===c){conn=null;clearTimeout(connectTimer);pendingSend=false;pendingRequest=null;setConn(false);notice('연결이 끊겨 다시 접속해요.','closed');scheduleRetry();}});c.on('error',()=>{if(epoch===ep&&conn===c)connectionFailed('연결 오류로 다시 접속해요.','connection-error');});
 }
-function reconnectNow(){retries=0;clearTimeout(retryTimer);retryTimer=null;if(mode==='guest'){if(peer?.open)connectGuest();else startGuest();}else if(mode==='host'){saveHost();startHost(!!st);}else notice('방 만들기나 참가를 선택해줘.');}
+function reconnectNow(){sessionReplaced=false;retries=0;clearTimeout(retryTimer);retryTimer=null;if(mode==='guest'){if(peer?.open)connectGuest();else startGuest();}else if(mode==='host'){saveHost();startHost(!!st);}else notice('방 만들기나 참가를 선택해줘.');}
 setInterval(()=>{if(mode==='bot'||!conn?.open||!connected)return;if(Date.now()-lastSeen>22000){connectionFailed('상대 응답이 없어 진행을 멈췄어요. 다시 연결 중이에요.','heartbeat');return}conn.send({t:'ping'});},5000);
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&mode==='guest'){retries=0;if(conn?.open)conn.send({t:'sync'});else reconnectNow();}else if(document.visibilityState==='hidden'&&mode==='host')saveHost();});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&mode==='guest'&&!sessionReplaced){retries=0;if(conn?.open)conn.send({t:'sync'});else reconnectNow();}else if(document.visibilityState==='hidden'&&mode==='host')saveHost();});
 function inviteURL(){return location.origin+location.pathname+'?room='+roomCode+'#invite='+roomSecret+'&game='+roomId;}
 async function copyLink(){const u=inviteURL();try{await navigator.clipboard.writeText(u);$('shareMessage').textContent='복사했어요. 상대에게만 보내줘.';}catch(e){$('shareMessage').textContent='아래 초대 주소를 길게 눌러 복사해줘.';$('inviteLink').value=u;$('inviteLink').hidden=false;}}
 async function shareInvite(){if(navigator.share){try{await navigator.share({title:'Game BBang 맞고 초대',url:inviteURL()});return}catch(e){if(e.name==='AbortError')return}}await copyLink();}

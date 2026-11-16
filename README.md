@@ -20,7 +20,7 @@
 
 ## 개발·검사
 engine.js: 규칙/저장 상태 검증. network.js: 연결/저장/자리. ui.js/style.css: 직접 제작 벡터 화투와 화면. PeerJS 1.5.4 원본 고지 유지.
-Node 22에서 node test-runner.cjs 또는 브라우저 tests.html. 규칙·저장 65개와 가상 연결·복구 24개 검사, 고정 seed 1000판 카드 보존/종료 검사 포함. 가상 통신은 실제 폰 테스트가 아닙니다.
+Node 22에서 node test-runner.cjs 또는 브라우저 tests.html. 규칙·저장 65개와 가상 연결·복구 25개 검사, 고정 seed 1000판 카드 보존/종료 검사 포함. 가상 통신은 실제 폰 테스트가 아닙니다.
 
 ## 공개 절차
 main과 staging을 각각 검사한 뒤 하나의 Pages 산출물로 배포합니다. main은 루트, staging은 preview 경로입니다. preview는 저장 키·Peer 네임스페이스가 분리됩니다. 검사가 실패하면 package/deploy가 실행되지 않습니다. 상세 절차·롤백은 RELEASE.md.

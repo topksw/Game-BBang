@@ -45,5 +45,6 @@ function runNetworkTests(engineSource,networkSource){
  test('저장 접근 차단 환경에서도 시작·연습 가능',()=>{const l=lab(),bad={getItem(){throw Error('blocked')},setItem(){throw Error('blocked')},removeItem(){}};const c=l.client(undefined,bad);c.startBot();yes(c.get().st);eq(c.get().mode,'bot');});
  test('결과 수치에 HTML 문자열이 있으면 상태 거절',()=>{const l=lab(),{h,g}=l.pair(),v=h.viewFor(1);yes(!g.validView({...v,phase:'end',result:{w:0,g:0,base:7,total:'<img>',items:[],mults:[]}}));});
  test('잘못된 마지막 패·알림 객체 거절',()=>{const l=lab(),{g}=l.pair(),v=g.get().view;yes(!g.validView({...v,last:{p:9,played:0,flipped:null}}));yes(!g.validView({...v,toast:{seq:1,p:0,text:{}}}));});
+ test('같은 자리 새 연결은 남은 연결을 대체하고 이전 창 재시도 중단',()=>{const l=lab(),{h,g,invite}=l.pair(),before=JSON.stringify(h.get().st),replacement=l.client(invite,g.store);replacement.startGuest();l.tick();yes(replacement.get().connected);yes(!g.get().connected);eq(g.get().lastError,'replaced');g.visible('visible');l.tick(30000);yes(!g.get().connected);yes(replacement.get().connected);eq(JSON.stringify(h.get().st),before);});
  return {total:results.length,passed:results.filter(x=>x.ok).length,results};
 }
