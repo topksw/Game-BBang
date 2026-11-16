@@ -1,0 +1,63 @@
+
+*{box-sizing:border-box}
+body{margin:0;font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:radial-gradient(circle at 50% 40%,#2f7a46,#174a2a 75%);color:#f4f1e6;min-height:100vh;-webkit-user-select:none;user-select:none}
+button{font-family:inherit;cursor:pointer;border:0;border-radius:10px;padding:10px 16px;font-size:15px;font-weight:700}
+.btn{background:#f2c14e;color:#3a2600}.btn2{background:#ffffff22;color:#fff;border:1px solid #ffffff44}.btnr{background:#d9443b;color:#fff}
+input{font-family:inherit;font-size:16px;padding:10px;border-radius:10px;border:1px solid #ffffff55;background:#00000033;color:#fff;width:100%}
+#lobby{max-width:420px;margin:0 auto;padding:28px 18px}
+#lobby h1{text-align:center;font-size:30px;margin:6px 0 2px;letter-spacing:2px}
+#lobby .sub{text-align:center;opacity:.8;margin-bottom:22px}
+.panel{background:#00000030;border:1px solid #ffffff22;border-radius:14px;padding:16px;margin-bottom:14px}
+.panel h3{margin:0 0 10px;font-size:16px}
+.row{display:flex;gap:8px;align-items:center}
+.code{font-size:34px;font-weight:900;letter-spacing:6px;text-align:center;color:#f2c14e;margin:8px 0}
+.muted{opacity:.75;font-size:13px}
+details{font-size:13px;line-height:1.6}
+#game{display:none;max-width:760px;margin:0 auto;padding:6px 8px 12px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:4px 2px}
+.top b{color:#f2c14e}
+.player{background:#00000028;border-radius:12px;padding:6px 8px;margin:4px 0}
+.phead{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin-bottom:4px}
+.phead .sc{font-weight:900;color:#f2c14e;font-size:16px}
+.turnmark{display:inline-block;background:#f2c14e;color:#3a2600;border-radius:6px;padding:0 6px;font-size:12px;margin-left:4px}
+.caps{display:flex;gap:6px;flex-wrap:wrap;min-height:34px}
+.cg{display:flex;align-items:flex-end;background:#00000022;border-radius:6px;padding:2px 4px 2px 2px}
+.cg .cards{display:flex}.cg .cards .card{margin-right:-14px}.cg .cards .card:last-child{margin-right:0}
+.cg .cnt{font-size:11px;margin-left:4px;opacity:.9;white-space:nowrap}
+.items{font-size:11px;opacity:.85;margin-top:2px;min-height:14px}
+.backs{display:flex}.backs .card{margin-right:-18px}
+#table{position:relative;min-height:170px;background:#0000001a;border:2px dashed #ffffff1f;border-radius:16px;margin:6px 0;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;justify-content:center}
+.stack{display:flex;flex-direction:column}.stack .card+.card{margin-top:calc(var(--w)*-0.95)}
+.deck{position:relative;display:flex;flex-direction:column;align-items:center;font-size:12px;margin-right:6px}
+#status{text-align:center;font-weight:700;padding:6px;min-height:30px}
+#hand{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;padding:6px 0 10px;--w:52px}
+.card{--w:34px;width:var(--w);height:calc(var(--w)*1.55);border-radius:5px;background:linear-gradient(180deg,#fffaf0 0%,var(--mc,#eee) 100%);border:1.5px solid #8b1d1d;position:relative;display:inline-flex;flex-direction:column;align-items:center;justify-content:space-between;font-size:calc(var(--w)*.24);box-shadow:0 1px 3px #0007;padding:2px 0;color:#222;flex:none;transition:transform .15s}
+#table .card{--w:42px}#hand .card{--w:52px}
+.card .mo{font-weight:900;color:#8b1d1d;line-height:1}
+.card .nm{font-size:.8em;color:#444;line-height:1}
+.card .sym{font-weight:900;line-height:1.1;text-align:center;border-radius:4px;padding:1px 2px}
+.k-gwang .sym{background:#d9443b;color:#fff;border-radius:50%;width:1.9em;height:1.9em;display:flex;align-items:center;justify-content:center;font-size:1.1em}
+.k-hong .sym{background:#d9443b;color:#fff}.k-cheong .sym{background:#2f62c9;color:#fff}.k-cho .sym{background:#3f8f3a;color:#fff}.k-tti .sym{background:#888;color:#fff}
+.k-yeol .sym{background:#f2c14e;color:#3a2600}.k-ssang .sym{background:#6b3fa0;color:#fff}.k-pi .sym{color:#666}
+.card.back{background:repeating-linear-gradient(45deg,#b3261e,#b3261e 4px,#9b1d17 4px,#9b1d17 8px);border-color:#5a0f0b}
+.card.back *{display:none}
+.card.match{box-shadow:0 0 0 3px #f2c14e,0 2px 6px #000a}
+.card.playable{cursor:pointer}.card.playable:hover{transform:translateY(-6px)}
+.card.sel{transform:translateY(-10px);box-shadow:0 0 0 3px #fff}
+.card.opt{cursor:pointer;box-shadow:0 0 0 3px #4ee0f2;animation:pulse 1s infinite}
+.card.lastf{box-shadow:0 0 0 3px #ff8a3d}
+@keyframes pulse{50%{transform:scale(1.07)}}
+#modal{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+#modal .box{background:#1f5e36;border:2px solid #f2c14e;border-radius:16px;padding:18px;max-width:380px;width:100%;text-align:center}
+#modal h2{margin:0 0 10px}
+#modal .opts{display:flex;justify-content:center;gap:12px;margin:12px 0}
+#modal .opts .card{--w:60px}
+#modal table{width:100%;font-size:14px;margin:8px 0;border-collapse:collapse}#modal td{padding:3px;border-bottom:1px solid #ffffff22}#modal td:last-child{text-align:right}
+#toast{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);background:#f2c14e;color:#3a2600;font-size:28px;font-weight:900;padding:14px 26px;border-radius:16px;box-shadow:0 6px 24px #000a;display:none;z-index:30;white-space:nowrap}
+#lastPlay{display:flex;gap:6px;align-items:center;justify-content:center;min-height:40px;margin:4px 0;font-size:12px;color:#fff}#lastPlay .card{--w:28px}#history{background:#00000028;border-radius:12px;padding:10px;margin:8px 0;font-size:13px}#history summary,#gameHelp summary{cursor:pointer;font-weight:700}#gameHelp{background:#00000028;border-radius:12px;padding:10px;margin:8px 0;font-size:13px;line-height:1.65}button.card:focus-visible{outline:4px solid #fff;outline-offset:3px;z-index:2}#historyList{max-height:180px;overflow:auto;margin-top:8px;line-height:1.6}#historyList p{margin:3px 0;border-bottom:1px solid #ffffff18;padding:3px 0}
+#exitConfirm{max-width:360px;width:calc(100% - 32px);border:2px solid #f2c14e;border-radius:16px;background:#1f5e36;color:#fff;padding:20px;font-family:inherit}#exitConfirm::backdrop{background:#000a}#exitConfirm h2{margin:0 0 10px;font-size:20px}#exitConfirm p{line-height:1.5}#exitConfirm .row{justify-content:flex-end}
+#conn{font-size:12px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#aaa;margin-right:4px}.dot.on{background:#5ee06b}.dot.off{background:#e05e5e}
+
+/* Mobile release skin */
+:root{color-scheme:dark}body{touch-action:manipulation}input{user-select:text}label{display:block;font-size:13px;margin-top:12px;margin-bottom:6px}.build{text-align:center;color:#f2c14e;font-size:13px}.rules p{line-height:1.7}button{min-height:44px}button:disabled{opacity:.5;cursor:default}.top{flex-wrap:wrap;gap:8px}.phead{flex-wrap:wrap;gap:5px}.caps{max-width:100%;overflow:hidden}.cg{max-width:100%}.cg .cards{flex-wrap:wrap;gap:1px}.cg .cards .card{margin-right:0;--w:23px}.cg .cards .card .nm{display:none}.cg .cards .card .art{opacity:.65}.backs .card{--w:24px;margin-right:-13px}#hand{gap:7px}#hand .card{--w:54px}#table .card{--w:46px}#table{min-height:155px;gap:8px;padding:10px 5px}.card{overflow:hidden;isolation:isolate}.art{position:absolute;left:0;bottom:5px;width:100%;height:80%;z-index:-1;opacity:.8}.card .mo{align-self:flex-start;padding-left:3px;background:#fff9;border-radius:3px}.card .sym{font-size:.9em;background:#fff8;z-index:1}.card .nm{font-size:.7em;background:#fffd;width:100%;text-align:center}.k-gwang .sym{background:#b3261e;color:white}.k-hong .sym{background:#b3261e;color:white}.k-cheong .sym{background:#265bc1;color:white}.k-cho .sym{background:#267b38;color:white}.card.opt{animation:none;outline:2px solid #4ee0f2}.card.playable:hover{transform:none}#lastPlay{flex-wrap:wrap}#modal .box{max-height:86dvh;overflow:auto;overscroll-behavior:contain}#modal{padding:8px}#toast{max-width:90vw;white-space:normal;font-size:18px;pointer-events:none}.modalActions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}#sharing{position:fixed;bottom:8px;left:5%;width:90%;z-index:40;background:#153e26;border-radius:8px;padding:0 5px}#sharing:has(#shareMessage:empty){display:none}#exitConfirm{max-height:85dvh;overflow:auto}#exitConfirm .row{flex-wrap:wrap}#status{line-height:1.6}#connectionHelp[hidden]{display:none}@media(max-width:360px){#hand .card{--w:48px}#table .card{--w:44px}.phead{font-size:12px}}@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
