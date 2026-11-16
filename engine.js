@@ -162,4 +162,27 @@ function reduceAction(s,p,a){
  return false;
 }
 function allCards(s){let a=[...s.deck,...s.floor,...s.hands.flat(),...s.caps.flat()];if(s.pending){a.push(...s.pending.captured,s.pending.F);if(s.pending.pair)a.push(...s.pending.pair)}return a}
-function validState(s){try{const a=allCards(s);return Array.isArray(s.names)&&s.names.length===2&&s.names.every(n=>typeof n==='string'&&n.length<=8)&&Array.isArray(s.totals)&&s.totals.length===2&&s.totals.every(Number.isFinite)&&s.hands.length===2&&s.caps.length===2&&s.goCount.length===2&&s.lastGo.length===2&&s.shakes.length===2&&Array.isArray(s.log)&&s.log.length<=100&&s.log.every(e=>(e.p===null||e.p===0||e.p===1)&&typeof e.text==='string')&&Number.isInteger(s.seq)&&s.seq>=0&&s.ready.length===2&&s.ready.every(x=>typeof x==='boolean')&&a.length===48&&new Set(a).size===48&&a.every(c=>Number.isInteger(c)&&c>=0&&c<48)&&['play','chooseFlip','goStop','end'].includes(s.phase)&&[0,1].includes(s.turn)&&Number.isInteger(s.round)&&s.round>0&&Array.isArray(s.ready)&&Number.isSafeInteger(s.revision)&&s.revision>=0}catch(e){return false}}
+
+function validState(s){try{
+ const pair=(a,f)=>Array.isArray(a)&&a.length===2&&a.every(f), nonneg=n=>Number.isSafeInteger(n)&&n>=0;
+ const card=c=>Number.isInteger(c)&&c>=0&&c<48, cards=a=>Array.isArray(a)&&a.every(card);
+ const actor=p=>p===0||p===1;
+ if(!s||!pair(s.names,n=>typeof n==='string'&&n.length<=8)||!pair(s.totals,Number.isSafeInteger)||s.totals[0]+s.totals[1]!==0)return false;
+ if(!cards(s.deck)||!cards(s.floor)||!pair(s.hands,cards)||!pair(s.caps,cards)||!actor(s.turn)||!actor(s.dealer))return false;
+ if(!pair(s.goCount,n=>nonneg(n)&&n<=10)||!pair(s.lastGo,n=>nonneg(n)&&n<=100)||!pair(s.shakes,a=>Array.isArray(a)&&new Set(a).size===a.length&&a.every(m=>Number.isInteger(m)&&m>=1&&m<=12)))return false;
+ if(!nonneg(s.seq)||!nonneg(s.revision)||!Number.isSafeInteger(s.round)||s.round<1||!Number.isSafeInteger(s.nagari)||s.nagari<1||!Number.isInteger(Math.log2(s.nagari)))return false;
+ if(!pair(s.ready,x=>typeof x==='boolean')||!Array.isArray(s.log)||s.log.length>100||!s.log.every(e=>e&&(e.p===null||actor(e.p))&&typeof e.text==='string'&&e.text.length<=500))return false;
+ if(!['play','chooseFlip','goStop','end'].includes(s.phase))return false;
+ if(s.last!==null&&(!s.last||!actor(s.last.p)||!card(s.last.played)||(s.last.flipped!==null&&!card(s.last.flipped))))return false;
+ if(s.toast!==undefined&&(!s.toast||!nonneg(s.toast.seq)||s.toast.seq>s.seq||!actor(s.toast.p)||typeof s.toast.text!=='string'||s.toast.text.length>500))return false;
+ if(s.phase==='chooseFlip'){
+  const p=s.pending;if(!p||p.p!==s.turn||!card(p.F)||!card(p.played)||p.flipped!==p.F||!cards(p.captured)||!(p.pair===null||cards(p.pair)&&p.pair.length===2)||!Array.isArray(p.opts)||p.opts.length!==2||!p.opts.every(c=>card(c)&&s.floor.includes(c)&&cm(c)===cm(p.F))||new Set(p.opts).size!==2||!nonneg(p.steal)||p.steal>3||!Array.isArray(p.ev)||!p.ev.every(t=>typeof t==='string'&&t.length<100))return false;
+ }else if(s.pending!==null)return false;
+ if(s.phase==='end'){
+  const r=s.result;if(!r||s.hands.some(h=>h.length>10))return false;
+  if(r.nagari){if(r.mult!==s.nagari)return false;}
+  else if(!actor(r.w)||!nonneg(r.base)||!nonneg(r.total)||!nonneg(r.g)||!Array.isArray(r.items)||!Array.isArray(r.mults)||![...r.items,...r.mults].every(a=>Array.isArray(a)&&a.length===2&&typeof a[0]==='string'&&a[0].length<=100&&nonneg(a[1])))return false;
+ }else if(s.result!==null||s.ready.some(Boolean))return false;
+ if(s.phase==='goStop'&&(s.hands[s.turn].length===0||score(s.caps[s.turn]).total<7))return false;
+ const a=allCards(s);return a.length===48&&new Set(a).size===48&&a.every(card)&&s.hands.every(h=>h.length<=10);
+ }catch(e){return false}}
