@@ -1,5 +1,5 @@
 'use strict';
-const VERSION='1.0.0-beta.2', PROTOCOL=2, SAVE_FORMAT=2, RULESET='bbang-basic-1';
+const VERSION='1.0.0-beta.3', PROTOCOL=2, SAVE_FORMAT=2, RULESET='bbang-basic-1';
 const APP_SCOPE=location.pathname.includes('/preview/')?'preview':'live';
 const STORE_PREFIX=APP_SCOPE==='preview'?'bbang-preview-':'bbang-', SAVE_KEY=STORE_PREFIX+'save-v1';
 let mode=null,st=null,view=null,peer=null,conn=null,roomCode=null,roomId='',selected=null,lastToast=0,botTimer=null;

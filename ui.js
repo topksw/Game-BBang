@@ -1,14 +1,6 @@
-// Original vector artwork, designed for Game BBang. No third-party card images.
-function cardArt(c){const m=cm(c),k=ck(c),col=['','#275e36','#b83d5d','#ce5b80','#4e625f','#754c94','#c94143','#b84258','#746c3c','#c99028','#bd5228','#725688','#527b90'][m];
-const flower=(x,y)=>'<g transform="translate('+x+' '+y+')">'+[0,72,144,216,288].map(a=>'<ellipse cx="0" cy="-5" rx="3.8" ry="6" transform="rotate('+a+')" fill="'+col+'"/>').join('')+'<circle r="2.8" fill="#efc86c"/></g>';
-let scene='<path d="M6 56 Q27 39 30 14 M23 42 L43 25 M16 48 L7 29" stroke="'+col+'" stroke-width="3" fill="none"/>'+flower(30,17)+flower(43,27)+flower(9,31)+flower(22,40);
-if([1,8,11].includes(m))scene='<path d="M2 59 Q18 31 34 56 L48 42 L57 62" fill="'+col+'"/>'+([1,11].includes(m)?'<path d="M28 59 L25 20 M25 32 L9 28 M26 26 L42 20" stroke="'+col+'" stroke-width="4"/><path d="M7 27 Q15 14 23 26 M29 20 Q39 8 48 20" fill="'+col+'"/>':'<circle cx="40" cy="17" r="11" fill="#edb645"/>');
-if(k==='gwang')scene+='<circle cx="12" cy="12" r="8" fill="#d9443b"/><path d="M11 7 L13 12 L17 13 L12 15 L11 19 L9 14 L6 13 L10 11 Z" fill="#fff5d1"/>';
-if(k==='yeol')scene+='<path d="M13 22 Q24 8 33 22 Q40 10 48 22 Q30 18 28 31 Q22 21 13 22" fill="#242c2c"/>';
-return '<svg class="art" viewBox="0 0 58 64" aria-hidden="true">'+scene+'</svg>'}
 // ===== 화면 =====
 function cardHTML(c,cls='',extra=''){
-  if(c===null||c===undefined)return `<div class="card back ${cls}"></div>`;
+  if(c===null||c===undefined)return `<div class="card back ${cls}">${cardBackArt()}</div>`;
   const m=cm(c),interactive=extra.includes('onclick='),tag=interactive?'button':'div';
   return `<${tag} ${interactive?`type="button" aria-label="${m}월 ${MN[m]} ${sym(c)}"`:""} class="card k-${ck(c)} ${cls}" style="--mc:${MCOL[m]}" data-id="${c}" ${extra}><span class="mo">${m}</span><span class="sym">${sym(c)}</span>${cardArt(c)}<span class="nm">${MN[m]}</span></${tag}>`;
 }
@@ -70,13 +62,13 @@ function renderModal(v){
   }else if(v.phase==='goStop'&&v.turn===me){
     const sc=score(v.caps[me]);
     h=`<h2>${sc.total}점! 고? 스톱?</h2><div class="muted">${sc.items.map(x=>x[0]+' '+x[1]).join(' · ')}</div><div class="muted" style="margin-top:6px">지금 ${v.goCount[me]}고 · 상대 ${score(v.caps[op]).total}점 · 남은 패 ${v.hand.length}장</div>
-      <div class="opts"><button class="btnr" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'go'})">고!</button><button class="btn" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'stop'})">스톱</button></div>`;
+      <div class="opts"><button class="btnr" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'go'})" aria-label="고 계속하기">고!<small style="display:block;font-size:11px;margin-top:5px">계속 도전</small></button><button class="btn" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'stop'})" aria-label="스톱 점수 확정">스톱<small style="display:block;font-size:11px;margin-top:5px">점수 확정</small></button></div>`;
   }else if(v.phase==='end'&&v.result){
     const r=v.result;
     if(r.nagari)h=`<h2>나가리</h2><div>아무도 못 났어요. 다음 판은 점수 x${v.nagari}!</div>`;
     else{
       const win=r.w===me;
-      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><table>${r.items.map(x=>`<tr><td>${esc(x[0])}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${esc(m[0])}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
+      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><div class="resultScore">${r.total}<small>점</small></div><div class="muted">이번 판 획득 점수</div><table>${r.items.map(x=>`<tr><td>${esc(x[0])}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${esc(m[0])}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
     }
     const ready=v.ready||[false,false];
     h+=`<div class="muted">총점 ${esc(v.names[me])} ${v.totals[me]} : ${v.totals[op]} ${esc(v.names[op])}</div><div style="margin-top:10px">${esc(v.names[me])}: ${ready[me]?'준비 완료':'준비 전'} · ${esc(v.names[op])}: ${v.mode==='bot'?'자동 준비':(ready[op]?'준비 완료':'준비 전')}</div><div class="opts"><button class="btn" ${ready[me]||blocked?'disabled style="opacity:.6;cursor:default"':''} onclick="act({type:'next'})">${ready[me]?'상대 기다리는 중':'다음 판 준비'}</button></div>`;
@@ -93,7 +85,7 @@ function pickHand(c){
   act({type:'play',c,f:fl[0]});
 }
 function pickFloor(f){if(selected===null)return;const c=selected;act({type:'play',c,f})}
-let toastT;function showToast(t){const e=$('toast');e.innerHTML=t;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',1400)}
+let toastT;function showToast(t){const e=$('toast');e.innerHTML=t;e.style.display='block';if(!matchMedia('(prefers-reduced-motion: reduce)').matches&&e.animate)e.animate([{opacity:0,transform:'translate(-50%,-35%) scale(.94)'},{opacity:1,transform:'translate(-50%,-50%) scale(1)'}],{duration:180,easing:'ease-out'});clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',1400)}
 
 let cardsLarge=stored(STORE_PREFIX+'large-cards',false),soundEnabled=stored(STORE_PREFIX+'sound',false),audioContext=null,lastSoundRevision=-1;
 function applyPreferences(){$('game').classList.toggle('largeCards',!!cardsLarge);$('zoomButton').setAttribute('aria-pressed',String(!!cardsLarge));$('zoomButton').textContent=cardsLarge?'패 기본 크기':'패 크게';$('soundButton').setAttribute('aria-pressed',String(!!soundEnabled));$('soundButton').textContent=soundEnabled?'소리 끄기':'소리 켜기';}
@@ -105,3 +97,30 @@ applyPreferences();
 
 async function checkForUpdate(){try{const r=await fetch('build.json',{cache:'no-store'});if(!r.ok)return;const b=await r.json();if(typeof b.version==='string'&&b.version!==VERSION)$('updateNotice').textContent='새 버전이 있어요. 현재 판을 마치고 게임을 나간 뒤 두 사람 모두 새로고침해줘.';}catch(e){}}
 setInterval(checkForUpdate,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForUpdate();});checkForUpdate();
+
+if($('lobbyMark'))$('lobbyMark').innerHTML=[0,8,28].map(c=>cardHTML(c)).join('');
+
+// Presentation only: authoritative state, clocks, transport, and actions never wait on these effects.
+let queuedVisual=null,visualRAF=0;
+let visualFrame=null,visualJobs=[],motionStats={batches:0,skipped:0};
+function stopVisuals(){for(const a of visualJobs)a.cancel();visualJobs=[];document.querySelectorAll('.fx-layer').forEach(e=>e.remove());document.querySelectorAll('.fx-pending').forEach(e=>e.classList.remove('fx-pending'));}
+function visualSnapshot(v){return {key:[mode,v.roomId,v.code,v.round,v.me].join(':'),revision:v.revision,phase:v.phase,connected:mode==='bot'||connected,visible:document.visibilityState==='visible',last:v.last?{...v.last}:null,caps:v.caps.map(a=>[...a])};}
+function cardPositions(){const map=new Map();for(const e of document.querySelectorAll('#hand .card[data-id],#table .card[data-id],#oppBox .card[data-id],#meBox .card[data-id]')){const r=e.getBoundingClientRect();if(r.width&&r.height)map.set(Number(e.dataset.id),{r:{x:r.x,y:r.y,width:r.width,height:r.height},html:e.outerHTML});}return map;}
+const paintGame=render;
+render=function(v){
+ const before=visualFrame,positions=cardPositions(),deckRect=$('table').querySelector('.deck .card')?.getBoundingClientRect(),opRect=$('oppBox').getBoundingClientRect();stopVisuals();paintGame(v);const after=visualSnapshot(v);visualFrame=after;
+ const eligible=before&&before.key===after.key&&after.revision===before.revision+1&&before.connected&&after.connected&&before.visible&&after.visible&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&typeof Element.prototype.animate==='function';
+ if(eligible)queuedVisual={v:{...v,caps:v.caps.map(a=>[...a]),last:v.last?{...v.last}:null},before,positions,deckRect,opRect};else if(!queuedVisual||queuedVisual.v.revision!==after.revision||queuedVisual.before.key!==after.key||!after.connected||!after.visible){queuedVisual=null;motionStats.skipped++;}
+ if(queuedVisual&&!visualRAF)visualRAF=requestAnimationFrame(()=>{visualRAF=0;const q=queuedVisual;queuedVisual=null;if(q&&document.visibilityState==='visible')animateVisualTransition(q.v,q.before,q.positions,q.deckRect,q.opRect);});
+};
+function animateVisualTransition(v,before,positions,deckRect,opRect){let jobs=[];const nextPositions=cardPositions();const tableRect=$('table').getBoundingClientRect();const mid={x:tableRect.x+tableRect.width/2-24,y:tableRect.y+tableRect.height/2-37,width:48,height:74};
+ const played=v.last&&v.last.played,flipped=v.last&&v.last.flipped;
+ if(v.last&&(!before.last||before.last.played!==played)){const from=positions.get(played)?.r||{x:opRect.x+opRect.width/2-24,y:opRect.y,width:48,height:74};jobs.push({c:played,from,to:nextPositions.get(played)?.r||mid,via:mid});}
+ if(flipped!=null&&(!before.last||before.last.flipped!==flipped)){const from=deckRect?{x:deckRect.x,y:deckRect.y,width:deckRect.width,height:deckRect.height}:mid;jobs.push({c:flipped,from,to:nextPositions.get(flipped)?.r||mid,flip:true});}
+ for(let i=0;i<2;i++)for(const c of v.caps[i])if(!before.caps[i].includes(c)&&!jobs.some(j=>j.c===c)){const from=positions.get(c)?.r,to=nextPositions.get(c)?.r;if(from&&to)jobs.push({c,from,to});}
+ jobs=jobs.slice(0,7);if(!jobs.length)return;motionStats.batches++;const layer=document.createElement('div');layer.className='fx-layer';layer.setAttribute('aria-hidden','true');document.body.append(layer);
+ for(const j of jobs){const ghost=document.createElement('div');ghost.innerHTML=cardHTML(j.c);const e=ghost.firstElementChild;e.classList.add('fx-card');e.style.setProperty('--w',j.from.width+'px');e.style.left='0';e.style.top='0';layer.append(e);const transform=r=>'translate('+r.x+'px,'+r.y+'px) scale('+(r.width/j.from.width)+')';let frames=[{transform:transform(j.from),opacity:.98},{transform:transform(j.to),opacity:1}];if(j.via)frames.splice(1,0,{transform:transform(j.via),offset:.5,opacity:1});if(j.flip)frames=[{transform:transform(j.from)+' rotateY(80deg)',opacity:.4},{transform:transform(mid)+' rotateY(0deg)',opacity:1,offset:.55},{transform:transform(j.to),opacity:1}];const target=document.querySelector('#table .card[data-id="'+j.c+'"],#meBox .card[data-id="'+j.c+'"],#oppBox .card[data-id="'+j.c+'"]');target?.classList.add('fx-pending');const a=e.animate(frames,{duration:j.flip?300:260,easing:'cubic-bezier(.2,.65,.3,1)',fill:'forwards'});visualJobs.push(a);a.finished.catch(()=>{}).finally(()=>{e.remove();target?.classList.remove('fx-pending');if(!layer.children.length)layer.remove();});}
+};
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){stopVisuals();queuedVisual=null;visualFrame=null;}});
+
+$('modal').addEventListener('keydown',e=>{if(e.key!=='Tab')return;const a=[...$('modal').querySelectorAll('button:not(:disabled)')];if(!a.length)return;const first=a[0],last=a[a.length-1];if(e.shiftKey&&(document.activeElement===first||!a.includes(document.activeElement))){e.preventDefault();last.focus()}else if(!e.shiftKey&&(document.activeElement===last||!a.includes(document.activeElement))){e.preventDefault();first.focus()}});
