@@ -26,6 +26,8 @@ function playerHTML(v,i,isMe){
 }
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function render(v){
+  applyPreferences();if($('inGameShare'))$('inGameShare').hidden=mode!=='host';
+  if(v.last&&v.revision!==lastSoundRevision){if(lastSoundRevision>=0)playTone();lastSoundRevision=v.revision;}
   const me=v.me,op=1-me;
   $('topL').innerHTML=`${v.code?`방 <b>${v.code}</b> · `:'연습 · '}${v.round}판${v.nagari>1?` · 나가리 x${v.nagari}`:''} · 총점 <b>${esc(v.names[me])} ${v.totals[me]}</b> : ${v.totals[op]} ${esc(v.names[op])}`;
   $('oppBox').innerHTML=playerHTML(v,op,false);
@@ -55,31 +57,32 @@ function render(v){
   else if(v.phase==='goStop')s=v.turn===me?'고? 스톱?':`${esc(v.names[op])}가 고/스톱 고민 중...`;
   else s='판 끝!';
   if(v.last&&v.phase!=='end'){s+=` <span class="muted">(${esc(v.names[v.last.p])}: ${MN[cm(v.last.played)]} 냄${v.last.flipped!==null?', '+MN[cm(v.last.flipped)]+' 뒤집음':''})</span>`}
-  $('status').innerHTML=s;
+  if(mode!=='bot'&&!connected)s='연결이 끊겨 진행을 멈췄어요. 다시 연결해줘.';else if(pendingSend)s='상대 기기의 응답을 확인 중이에요…';$('status').innerHTML=s;
   const available=myTurn?[...new Set(v.hand.map(cm))].filter(m=>v.hand.filter(c=>cm(c)===m).length===3&&!(v.shakes?.[me]||[]).includes(m)):[];
   $('shakeBar').innerHTML=available.map(m=>`<button class="btn2" onclick="act({type:'shake',m:${m}})">${m}월 흔들기 (승리 시 ×2)</button>`).join('');
   renderModal(v);
   if(v.toast&&v.toast.seq>lastToast){lastToast=v.toast.seq;showToast(`${esc(v.names[v.toast.p])}: ${esc(v.toast.text)}`)}
 }
 function renderModal(v){
-  const me=v.me,op=1-me;let h='';
+  const me=v.me,op=1-me;let h='';const blocked=pendingSend||(mode!=='bot'&&!connected);const disabled=blocked?'disabled':'';
   if(v.phase==='chooseFlip'&&v.pending&&v.pending.p===me){
-    h=`<h2>어느 패를 먹을까?</h2><div class="muted">뒤집은 패: ${MN[cm(v.pending.F)]}</div><div class="opts">${cardHTML(v.pending.F)}</div><div class="opts">${v.pending.opts.map(c=>cardHTML(c,'opt',`onclick="act({type:'flip',c:${c}})"`)).join('')}</div>`;
+    h=`<h2>어느 패를 먹을까?</h2><div class="muted">뒤집은 패: ${MN[cm(v.pending.F)]}</div><div class="opts">${cardHTML(v.pending.F)}</div><div class="opts">${v.pending.opts.map(c=>cardHTML(c,'opt',blocked?'':`onclick="act({type:'flip',c:${c}})"`)).join('')}</div>`;
   }else if(v.phase==='goStop'&&v.turn===me){
     const sc=score(v.caps[me]);
     h=`<h2>${sc.total}점! 고? 스톱?</h2><div class="muted">${sc.items.map(x=>x[0]+' '+x[1]).join(' · ')}</div><div class="muted" style="margin-top:6px">지금 ${v.goCount[me]}고 · 상대 ${score(v.caps[op]).total}점 · 남은 패 ${v.hand.length}장</div>
-      <div class="opts"><button class="btnr" style="font-size:20px;padding:14px 26px" onclick="act({type:'go'})">고!</button><button class="btn" style="font-size:20px;padding:14px 26px" onclick="act({type:'stop'})">스톱</button></div>`;
+      <div class="opts"><button class="btnr" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'go'})">고!</button><button class="btn" style="font-size:20px;padding:14px 26px" ${disabled} onclick="act({type:'stop'})">스톱</button></div>`;
   }else if(v.phase==='end'&&v.result){
     const r=v.result;
     if(r.nagari)h=`<h2>나가리</h2><div>아무도 못 났어요. 다음 판은 점수 x${v.nagari}!</div>`;
     else{
       const win=r.w===me;
-      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><table>${r.items.map(x=>`<tr><td>${x[0]}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${m[0]}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
+      h=`<h2>${win?'내가 이겼다!':esc(v.names[r.w])+' 승리'}</h2><table>${r.items.map(x=>`<tr><td>${esc(x[0])}</td><td>${x[1]}점</td></tr>`).join('')}${r.g?`<tr><td>${r.g}고 보너스</td><td>+${Math.min(r.g,2)}점</td></tr>`:''}<tr><td><b>기본</b></td><td><b>${r.base}점</b></td></tr>${r.mults.map(m=>`<tr><td>${esc(m[0])}</td><td>x${m[1]}</td></tr>`).join('')}<tr><td><b>최종</b></td><td><b style="color:#f2c14e;font-size:20px">${r.total}점</b></td></tr></table>`;
     }
     const ready=v.ready||[false,false];
-    h+=`<div class="muted">총점 ${esc(v.names[me])} ${v.totals[me]} : ${v.totals[op]} ${esc(v.names[op])}</div><div style="margin-top:10px">${esc(v.names[me])}: ${ready[me]?'준비 완료':'준비 전'} · ${esc(v.names[op])}: ${v.mode==='bot'?'자동 준비':(ready[op]?'준비 완료':'준비 전')}</div><div class="opts"><button class="btn" ${ready[me]?'disabled style="opacity:.6;cursor:default"':''} onclick="act({type:'next'})">${ready[me]?'상대 기다리는 중':'다음 판 준비'}</button></div>`;
+    h+=`<div class="muted">총점 ${esc(v.names[me])} ${v.totals[me]} : ${v.totals[op]} ${esc(v.names[op])}</div><div style="margin-top:10px">${esc(v.names[me])}: ${ready[me]?'준비 완료':'준비 전'} · ${esc(v.names[op])}: ${v.mode==='bot'?'자동 준비':(ready[op]?'준비 완료':'준비 전')}</div><div class="opts"><button class="btn" ${ready[me]||blocked?'disabled style="opacity:.6;cursor:default"':''} onclick="act({type:'next'})">${ready[me]?'상대 기다리는 중':'다음 판 준비'}</button></div>`;
   }
-  if(h)h+=`<div class="modalActions"><button class="btn2" onclick="askExit()">게임방 나가기</button>${mode==='host'?'<button class="btn2" onclick="copyLink()">초대 링크 복사</button>':''}</div>`;
+  if(h&&blocked)h+=`<p class="connectionWarning">${pendingSend?'응답을 확인 중이에요.':'연결이 끊겨 진행을 멈췄어요.'}</p><button class="btn2" onclick="reconnectNow()">다시 연결</button>`;
+  if(h)h+=`<div class="modalActions"><button class="btn2" onclick="askExit()">게임방 나가기</button><button class="btn2" onclick="copyDiagnostics()">오류 진단</button>${mode==='host'?'<button class="btn2" onclick="copyLink()">초대 링크 복사</button>':''}</div>`;
   $('mbox').innerHTML=h;$('modal').style.display=h?'flex':'none';
 }
 function pickHand(c){
@@ -91,3 +94,14 @@ function pickHand(c){
 }
 function pickFloor(f){if(selected===null)return;const c=selected;act({type:'play',c,f})}
 let toastT;function showToast(t){const e=$('toast');e.innerHTML=t;e.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>e.style.display='none',1400)}
+
+let cardsLarge=stored(STORE_PREFIX+'large-cards',false),soundEnabled=stored(STORE_PREFIX+'sound',false),audioContext=null,lastSoundRevision=-1;
+function applyPreferences(){$('game').classList.toggle('largeCards',!!cardsLarge);$('zoomButton').setAttribute('aria-pressed',String(!!cardsLarge));$('zoomButton').textContent=cardsLarge?'패 기본 크기':'패 크게';$('soundButton').setAttribute('aria-pressed',String(!!soundEnabled));$('soundButton').textContent=soundEnabled?'소리 끄기':'소리 켜기';}
+function toggleCardZoom(){cardsLarge=!cardsLarge;persist(STORE_PREFIX+'large-cards',cardsLarge);applyPreferences();}
+async function toggleSound(){soundEnabled=!soundEnabled;persist(STORE_PREFIX+'sound',soundEnabled);if(soundEnabled){try{const C=window.AudioContext||window.webkitAudioContext;if(C&&!audioContext)audioContext=new C();await audioContext?.resume();playTone();}catch(e){soundEnabled=false;notice('이 브라우저에서 소리를 켜지 못했어요.');}}applyPreferences();}
+function playTone(){if(!soundEnabled||!audioContext||audioContext.state!=='running')return;try{const o=audioContext.createOscillator(),g=audioContext.createGain();o.frequency.value=660;g.gain.setValueAtTime(.035,audioContext.currentTime);g.gain.exponentialRampToValueAtTime(.001,audioContext.currentTime+.09);o.connect(g);g.connect(audioContext.destination);o.start();o.stop(audioContext.currentTime+.1);}catch(e){}}
+function showCaptures(){if(!view)return;$('captureContents').innerHTML=[0,1].map(i=>'<h3>'+esc(view.names[i])+'</h3>'+capsHTML(view.caps[i])).join('');$('captureDialog').showModal();}
+applyPreferences();
+
+async function checkForUpdate(){try{const r=await fetch('build.json',{cache:'no-store'});if(!r.ok)return;const b=await r.json();if(typeof b.version==='string'&&b.version!==VERSION)$('updateNotice').textContent='새 버전이 있어요. 현재 판을 마치고 게임을 나간 뒤 두 사람 모두 새로고침해줘.';}catch(e){}}
+setInterval(checkForUpdate,60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkForUpdate();});checkForUpdate();
