@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Game BBang · 우리집 맞고</title>
 <script src="peerjs.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1.0.0-beta.3">
+<link rel="stylesheet" href="style.css?v=1.0.0-beta.4">
 </head>
 <body>
 <div id="updateNotice" role="status"></div>
@@ -52,19 +52,20 @@
 <div id="status" role="status" aria-live="polite"></div>
   <div id="shakeBar" class="row" style="justify-content:center;flex-wrap:wrap"></div>
   <div id="hand"></div>
-  <details class="toolsPanel"><summary>도구 · 설정</summary>  <div class="gameTools"><button class="btn2" id="zoomButton" aria-pressed="false" onclick="toggleCardZoom()">패 크게</button><button class="btn2" onclick="showCaptures()">획득 패 보기</button><button class="btn2" id="soundButton" aria-pressed="false" onclick="toggleSound()">소리 켜기</button><button class="btn2" onclick="copyDiagnostics()">오류 진단</button><button class="btn2" onclick="shareInvite()" id="inGameShare">초대 공유</button></div></details>
+  <details class="toolsPanel"><summary>도구 · 설정</summary>  <div class="gameTools"><button class="btn2" id="zoomButton" aria-pressed="false" onclick="toggleCardZoom()">패 크게</button><button class="btn2" id="beginnerButton" aria-pressed="false" onclick="toggleBeginner()">초보자 설명 켜기</button><button class="btn2" onclick="showCardPicker()">패 자세히</button><button class="btn2" onclick="showCaptures()">획득 패 보기</button><button class="btn2" id="soundButton" aria-pressed="false" onclick="toggleSound()">소리 켜기</button><button class="btn2" onclick="copyDiagnostics()">오류 진단</button><button class="btn2" onclick="shareInvite()" id="inGameShare">초대 공유</button></div></details>
   <details id="history"><summary>이번 판 진행 기록 <span id="historyCount"></span></summary><div id="historyList" aria-live="polite"></div></details>
   <details id="gameHelp"><summary>게임 방법과 점수</summary><p>같은 월을 맞춰요. 노란 테두리는 바닥과 맞는 패, 파란 테두리는 선택할 패예요. Tab·Enter·스페이스로도 선택할 수 있어요.</p><div class="rules"><b>BBang 기본 맞고 1 · 실사용 베타</b><p>48장, 손패 10장씩, 바닥 8장. 손이나 바닥에 같은 월 4장이 있으면 다시 나눠요. 총통은 사용하지 않아요.</p><p>7점부터 고/스톱. 1고 +1점, 2고 이상 +2점. 3고부터 ×2, 4고 ×4… 마지막 손패로 새로 난 경우 자동 스톱. 고 이후 점수가 오르지 않고 패를 모두 쓰면 나가리.</p><p>3광 3점(비 포함 2), 4광 4, 5광 15. 열끗·띠는 5장부터 1점씩. 고도리 5, 홍단·청단·초단 각 3. 피는 10장부터 1점씩, 쌍피는 2장.</p><p>쪽·따닥·바닥 같은 월 3장 먹기·싹쓸이는 상대 피 한 장씩 가져와요. 쌍피만 있으면 그 한 장을 가져와요. 바닥 3장이 처음부터 깔린 경우도 동일해요. 자뻑 추가 보너스·3뻑 승리는 없어요. 마지막 전체 차례는 싹쓸이 보너스 없음.</p><p>피박: 이긴 사람 피 점수 있음, 상대 피 1~5. 광박: 이긴 사람 광 점수 있음, 상대 광 0. 멍박: 이긴 사람 열끗 7장 이상. 고박: 진 사람이 고 선언. 각 ×2.</p><p>흔들기: 내 차례 손에 같은 월 3장이 있으면 공개 선언. 월마다 판당 한 번, 승리 시 ×2. 폭탄·9월 열끗 쌍피 전환은 사용하지 않아요. 나가리마다 다음 판 배율 ×2 누적.</p><p>돈·환전·결제 없는 개인용 점수 게임. 방장은 전체 패를 관리하므로 부정행위 방지용 경쟁 서비스가 아니에요.</p></div></details>
 </div>
+<dialog id="cardDetailDialog" aria-labelledby="cardDetailTitle"><h2 id="cardDetailTitle">패 자세히 보기</h2><div id="cardDetailContents"></div><button class="btn" onclick="$('cardDetailDialog').close()">닫기</button></dialog>
 <dialog id="diagnosticDialog" aria-labelledby="diagnosticTitle"><h2 id="diagnosticTitle">오류 진단</h2><p id="diagnosticStatus"></p><textarea id="diagnosticText" readonly aria-label="개인정보를 제외한 오류 진단"></textarea><button class="btn" onclick="$('diagnosticDialog').close()">닫기</button></dialog>
 <dialog id="captureDialog" aria-labelledby="captureTitle"><h2 id="captureTitle">획득 패 자세히</h2><div id="captureContents"></div><button class="btn" onclick="$('captureDialog').close()">닫기</button></dialog>
 <dialog id="exitConfirm" aria-labelledby="exitTitle"><h2 id="exitTitle">게임방을 나갈까?</h2><p id="exitMessage"></p><div class="row"><button type="button" class="btn2" onclick="$('exitConfirm').close()">계속 게임</button><button type="button" class="btn" onclick="leaveGame()">나가기</button></div></dialog>
 <div id="modal" role="dialog" aria-modal="true" aria-label="선택 및 판 결과"><div class="box" id="mbox"></div></div>
 <div id="toast"></div><div id="sharing"><span id="shareMessage" role="status"></span><input id="inviteLink" aria-label="복사할 초대 주소" readonly hidden></div>
 
-<script src="engine.js?v=1.0.0-beta.3"></script>
-<script src="network.js?v=1.0.0-beta.3"></script>
-<script src="artwork.js?v=1.0.0-beta.3"></script>
-<script src="ui.js?v=1.0.0-beta.3"></script>
+<script src="engine.js?v=1.0.0-beta.4"></script>
+<script src="network.js?v=1.0.0-beta.4"></script>
+<script src="artwork.js?v=1.0.0-beta.4"></script>
+<script src="ui.js?v=1.0.0-beta.4"></script>
 </body>
 </html>
