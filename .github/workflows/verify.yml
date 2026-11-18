@@ -18,7 +18,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,10 +27,26 @@ jobs:
           node-version: '22'
       - name: Rule, save and recovery tests
         run: node test-runner.cjs
+      - name: Install pinned browser test tooling
+        if: ${{ hashFiles('e2e.cjs') != '' }}
+        run: |
+          npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1
+          npx playwright install --with-deps chromium webkit
+      - name: Chromium and WebKit UI regression gate
+        if: ${{ hashFiles('e2e.cjs') != '' }}
+        run: node e2e.cjs
+      - name: Preserve browser verification evidence
+        if: ${{ always() && hashFiles('e2e.cjs') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-ui-verification
+          path: test-results
+          if-no-files-found: ignore
   package:
+    timeout-minutes: 15
     if: github.event_name != 'pull_request'
     needs: verify
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pages: write
@@ -49,6 +66,25 @@ jobs:
         run: |
           node production/test-runner.cjs
           node candidate/test-runner.cjs
+      - name: Install browsers for packaged sources
+        if: ${{ hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
+        run: |
+          npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1
+          npx playwright install --with-deps chromium webkit
+      - name: Browser gate for the exact published trees
+        if: ${{ hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
+        run: |
+          if [ -f candidate/e2e.cjs ]; then node candidate/e2e.cjs; fi
+          if [ -f production/e2e.cjs ]; then node production/e2e.cjs; fi
+      - name: Preserve packaged browser evidence
+        if: ${{ always() && hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: packaged-browser-verification
+          path: |
+            candidate/test-results
+            production/test-results
+          if-no-files-found: ignore
       - name: Build production and isolated preview
         run: node candidate/build-site.cjs production candidate _site
       - uses: actions/configure-pages@v5
