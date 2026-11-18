@@ -19,82 +19,59 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Rule, save and recovery tests
-        run: node test-runner.cjs
-      - name: Install pinned browser test tooling
-        if: ${{ hashFiles('e2e.cjs') != '' }}
-        run: |
-          npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1
-          npx playwright install --with-deps chromium webkit
-      - name: Chromium and WebKit UI regression gate
-        if: ${{ hashFiles('e2e.cjs') != '' }}
-        run: node e2e.cjs
-      - name: Preserve browser verification evidence
-        if: ${{ always() && hashFiles('e2e.cjs') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-ui-verification
-          path: test-results
-          if-no-files-found: ignore
-  package:
-    timeout-minutes: 15
-    if: github.event_name != 'pull_request'
-    needs: verify
-    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.65.1-noble@sha256:1507cbfc550a63a6b7396791ca4f00df17beb56342d2447b3f106c306f525579
+      options: --ipc=host
     permissions:
       contents: read
       pages: write
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.rollback_to || 'main' }}
+          ref: ${{ inputs.rollback_to || (github.ref_name == 'main' && github.sha) || 'main' }}
           path: production
       - uses: actions/checkout@v4
         with:
-          ref: staging
+          ref: ${{ (github.event_name == 'pull_request' || github.ref_name == 'staging') && github.sha || 'staging' }}
           path: candidate
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify both published sources
+      - name: Rule, save and recovery gates for both trees
         run: |
           node production/test-runner.cjs
           node candidate/test-runner.cjs
-      - name: Install browsers for packaged sources
+      - name: Install pinned test driver only
         if: ${{ hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
-        run: |
-          npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1
-          npx playwright install --with-deps chromium webkit
-      - name: Browser gate for the exact published trees
+        run: npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1
+      - name: Chromium and WebKit gates on exact published sources
         if: ${{ hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
         run: |
           if [ -f candidate/e2e.cjs ]; then node candidate/e2e.cjs; fi
           if [ -f production/e2e.cjs ]; then node production/e2e.cjs; fi
-      - name: Preserve packaged browser evidence
+      - name: Preserve browser evidence
         if: ${{ always() && hashFiles('candidate/e2e.cjs', 'production/e2e.cjs') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: packaged-browser-verification
+          name: browser-ui-verification
           path: |
             candidate/test-results
             production/test-results
           if-no-files-found: ignore
-      - name: Build production and isolated preview
+      - name: Build the exact verified production and preview
+        if: github.event_name != 'pull_request'
         run: node candidate/build-site.cjs production candidate _site
       - uses: actions/configure-pages@v5
+        if: github.event_name != 'pull_request'
       - uses: actions/upload-pages-artifact@v4
+        if: github.event_name != 'pull_request'
         with:
           path: _site
   deploy:
     if: github.event_name != 'pull_request'
-    needs: package
-    runs-on: ubuntu-latest
+    needs: verify
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
@@ -102,6 +79,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy verified files
+      - name: Deploy the verified artifact
         id: deployment
         uses: actions/deploy-pages@v4
