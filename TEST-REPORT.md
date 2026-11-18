@@ -16,7 +16,7 @@
 
 ## CI
 Node22의 node test-runner.cjs. npm install --no-save --ignore-scripts --package-lock=false playwright@1.65.1 이후 npx playwright install --with-deps chromium webkit, node e2e.cjs.
-e2e.cjs는 로컬 HTTP 서버의 실제 DOM과 16개 UI 검사(가상 Peer·격리 저장소)를 Chromium/WebKit에서 기본/움직임 줄이기로 실행하며 실패 시 비정상 종료. .github/workflows/verify.yml은 이 단계를 verify에 넣고 package/deploy는 needs: verify로 연결. 구버전 호환을 위해 e2e.cjs가 있는 소스에서만 브라우저 단계를 실행. 원격 실행·WebKit 결과는 해당 커밋의 GitHub Actions 보고서를 확인하세요. 로컬 검사 기록을 원격 성공으로 간주하지 않습니다.
+e2e.cjs는 로컬 HTTP 서버의 실제 DOM과 16개 UI 검사(가상 Peer·격리 저장소)를 Chromium/WebKit에서 기본/움직임 줄이기로 실행하며 실패 시 비정상 종료. .github/workflows/verify.yml은 digest로 고정한 Playwright 환경에서 실제 게시할 production/candidate 트리를 검사하고, 같은 작업에서 검증된 파일만 패키징합니다. deploy는 needs: verify로 연결합니다. 구버전 호환을 위해 e2e.cjs가 있는 소스에서만 브라우저 단계를 실행. 원격 실행·WebKit 결과는 해당 커밋의 GitHub Actions 보고서를 확인하세요. 로컬 검사 기록을 원격 성공으로 간주하지 않습니다.
 
 ## 안전 게시
 GitHub topksw 로그인 확인 → staging의 .github/workflows/verify.yml을 먼저 업데이트(인프라만) → 나머지 beta.5 파일 일괄 업로드 → Actions unit/UI 모두 통과 확인 → preview build/source/tests-ui/실제 접속·복구 재검증. 현재 main은 수정하지 않음.
@@ -25,3 +25,7 @@ GitHub topksw 로그인 확인 → staging의 .github/workflows/verify.yml을 �
 실제 두 폰·Safari·카톡·서로 다른 망·잠금·앱 전환·장기 사용 시험이 필요. device-check.html 및 DEVICE-CHECKLIST.md로 실제 수행 기록을 수집. 승인 전 1.0 표시/main 승격 안 함. TURN·유료 서버는 실제 실패 유형 확인 후 별도 결정.
 
 CI에는 격리 DOM 검사 외에 실제 Playwright 포인터/입력으로 연습 시작, 효과 설정, 패 상세, 320/390/760px 화면, 패 내기, 나가기를 수행하는 검증도 포함합니다. 이 검증도 실제 폰 시험은 아닙니다.
+
+## 원격 환경 복구
+첫 원격 verify에서 두 브라우저 검사는 통과했으나 별도 패키지 작업의 의존성 설치가 15분 제한을 넘어 취소되었습니다. 재시도에서도 다운로드가 지연되어 이를 중단하고, 같은 버전의 브라우저/의존성을 포함한 사전 구성 이미지에서 검증과 생성을 한 번에 수행하도록 바꾸었습니다. 게임 런타임 파일은 이 변경으로 바뀌지 않습니다.
+각자는 처음 참가한 브라우저로 돌아오세요. 두 사람이 반드시 같은 종류의 브라우저를 쓸 필요는 없지만, 실제 사용하는 기기/브라우저 조합의 승인은 별도로 필요합니다.
